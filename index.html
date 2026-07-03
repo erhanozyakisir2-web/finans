@@ -873,57 +873,63 @@ window.D = D;          // Firebase modülünün erişimi için ŞART
 window._curPg=curPg;
 renderDash();
 
-// Firebase
-(function(){
-  const s=document.createElement('script');
-  s.type='module';
-  s.textContent=`
-import{initializeApp}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import{getDatabase,ref,onValue,set}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
-const app=initializeApp({apiKey:"AIzaSyD5VtKdltTVdVNrdW00hEGhlOrPQeZTJfA",authDomain:"finans-app2.firebaseapp.com",databaseURL:"https://finans-app2-default-rtdb.europe-west1.firebasedatabase.app",projectId:"finans-app2",storageBucket:"finans-app2.firebasestorage.app",messagingSenderId:"231531011952",appId:"1:231531011952:web:df1e3084b6417e9062f9b5"});
-const db=getDatabase(app);
-const dr=ref(db,'finansData');
-let ready=false;
-setTimeout(()=>{
-  if(!ready){
-    const dot=document.getElementById('sdot');
-    const txt=document.getElementById('stxt');
-    if(dot)dot.style.background='#F05A5A';
-    if(txt)txt.textContent='Bağlanamadı — interneti kontrol edin';
+// ═══ FIREBASE REST SENKRON (v3) ═══
+const FB_URL='https://finans-app2-default-rtdb.europe-west1.firebasedatabase.app/finansData.json';
+
+function setSync(renk,msg){
+  const d=document.getElementById('sdot'),t=document.getElementById('stxt');
+  if(d)d.style.background=renk;
+  if(t)t.textContent=msg;
+}
+setSync('#F5A623','Bağlanıyor (v3)...');
+
+function toArr(v){if(!v)return[];return Array.isArray(v)?v.filter(Boolean):Object.values(v).filter(Boolean)}
+function migArr(arr){return toArr(arr).map(x=>{
+  if(x.aciklama!==undefined&&x.acik===undefined)x.acik=x.aciklama;
+  if(x.kategoriId!==undefined&&x.katId===undefined)x.katId=x.kategoriId;
+  if(x.altKategoriId!==undefined&&x.altKatId===undefined)x.altKatId=x.altKategoriId;
+  return x;})}
+
+function applyRemote(val){
+  if(!val)return;
+  if(val.islemler)D.islemler=migArr(val.islemler);
+  if(val.cariler)D.cariler=toArr(val.cariler);
+  const kats=toArr(val.kategoriler);
+  if(kats.length)D.kategoriler=kats;
+  if(val.cariIslemler)D.cariIslemler=migArr(val.cariIslemler);
+}
+
+async function fbLoad(ilk){
+  try{
+    const r=await fetch(FB_URL,{cache:'no-store'});
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    const val=await r.json();
+    if(val){
+      applyRemote(val);
+      // modal açıkken ekranı yenileme (kullanıcı form dolduruyor olabilir)
+      if(!document.querySelector('.ov.open'))renderPg(curPg);
+    }else if(ilk){
+      fbSaveNow(); // veritabanı boşsa ilk veriyi gönder
+    }
+    setSync('#2DD4A0','Senkronize ✓');
+  }catch(e){
+    setSync('#F05A5A','Hata: '+(e.message||'bağlantı yok'));
   }
-},8000);
-window._fbSave=function(){set(dr,window.D).catch(e=>console.error(e))};
-function mig(arr){return (arr||[]).map(x=>{
-  if(x&&x.aciklama!==undefined&&x.acik===undefined)x.acik=x.aciklama;
-  if(x&&x.kategoriId!==undefined&&x.katId===undefined)x.katId=x.kategoriId;
-  if(x&&x.altKategoriId!==undefined&&x.altKatId===undefined)x.altKatId=x.altKategoriId;
-  return x;}).filter(Boolean)}
-onValue(dr,(snap)=>{
-  const dot=document.getElementById('sdot');
-  const txt=document.getElementById('stxt');
-  const val=snap.val();
-  if(val){
-    if(val.islemler)window.D.islemler=mig(val.islemler);
-    if(val.cariler)window.D.cariler=(val.cariler||[]).filter(Boolean);
-    if(val.kategoriler&&val.kategoriler.length)window.D.kategoriler=val.kategoriler.filter(Boolean);
-    if(val.cariIslemler)window.D.cariIslemler=mig(val.cariIslemler);
-  }else if(!ready){
-    set(dr,window.D);
-  }
-  ready=true;
-  if(dot)dot.style.background='#2DD4A0';
-  if(txt)txt.textContent='Senkronize ✓';
-  if(window.renderPg)window.renderPg(window._curPg||'dashboard');
-},(err)=>{
-  ready=true; // timeout mesajı bunun üzerine yazmasın
-  const dot=document.getElementById('sdot');
-  const txt=document.getElementById('stxt');
-  if(dot)dot.style.background='#F05A5A';
-  if(txt)txt.textContent='Hata: '+(err.code||err.message||'bilinmiyor');
-  console.error(err);
-});`;
-  document.body.appendChild(s);
-})();
+}
+
+function fbSaveNow(){
+  fetch(FB_URL,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(D)})
+    .then(r=>{
+      if(r.ok)setSync('#2DD4A0','Senkronize ✓');
+      else setSync('#F05A5A','Kayıt hatası: HTTP '+r.status);
+    })
+    .catch(e=>setSync('#F05A5A','Kayıt hatası: '+(e.message||'?')));
+}
+window._fbSave=fbSaveNow;
+
+// İlk yükleme + her 25 saniyede bir diğer cihazlardaki değişiklikleri çek
+fbLoad(true);
+setInterval(()=>fbLoad(false),25000);
 </script>
 </body>
 </html>
