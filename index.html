@@ -869,6 +869,7 @@ try{
   if(r){const ld=JSON.parse(r);Object.assign(D,ld);}
 }catch(e){}
 
+window.D = D;          // Firebase modülünün erişimi için ŞART
 window._curPg=curPg;
 renderDash();
 
