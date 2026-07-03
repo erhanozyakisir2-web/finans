@@ -89,7 +89,7 @@ select.fi{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
 <body>
 
 <div class="topbar">
-  <div class="logo">💰 Carena Finans</div>
+  <div class="logo">💰 Carena Finans <span style="font-size:9px;color:#546A8A;font-weight:400">v4</span></div>
   <button class="btn btn-p btn-sm" onclick="acIslem(null,'gider')">+ Ekle</button>
 </div>
 
@@ -881,7 +881,7 @@ function setSync(renk,msg){
   if(d)d.style.background=renk;
   if(t)t.textContent=msg;
 }
-setSync('#F5A623','Bağlanıyor (v3)...');
+setSync('#F5A623','Bağlanıyor (v4)...');
 
 function toArr(v){if(!v)return[];return Array.isArray(v)?v.filter(Boolean):Object.values(v).filter(Boolean)}
 function migArr(arr){return toArr(arr).map(x=>{
